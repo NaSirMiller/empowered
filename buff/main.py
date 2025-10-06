@@ -11,7 +11,7 @@ def main():
 
     # Call ACS1 (acs_id=1)
 
-    resp = requests.get("http://127.0.0.1:8000/groups_available/1/2008")
+    resp = requests.get("http://127.0.0.1:8000/variables_available/1/2008/B17015")
     print(resp.status_code)
     print(resp.text)
 
