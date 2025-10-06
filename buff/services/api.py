@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from services.census import (
+from buff.services.census import (
     get_years,
     get_groups,
     get_variables,

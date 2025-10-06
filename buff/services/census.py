@@ -66,9 +66,14 @@ def get_groups(acs_id: int, year: int) -> List[Dict]:
         raise CensusAPIError(f"Failed to fetch groups: {e}")
 
 
-def validate_group_id(acs_id: int, year: int, group_id: str) -> bool:
+@lru_cache(maxsize=32)
+def get_group_ids(acs_id: int, year: int) -> set:
     groups = get_groups(acs_id, year)
-    return any(g["id"] == group_id for g in groups)
+    return {g["id"] for g in groups}
+
+
+def validate_group_id(acs_id: int, year: int, group_id: str) -> bool:
+    return group_id in get_group_ids(acs_id, year)
 
 
 # ------------------ Variables ------------------
@@ -79,6 +84,6 @@ def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
         response = requests.get(url)
         response.raise_for_status()
         variables = response.json()["variables"]
-        return [{"id": vid, "purpose": v["concept"]} for vid, v in variables.items()]
+        return [{"id": vid, "purpose": v["label"]} for vid, v in variables.items()]
     except Exception as e:
         raise CensusAPIError(f"Failed to fetch variables for group {group_id}: {e}")
