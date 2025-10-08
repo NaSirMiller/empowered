@@ -77,7 +77,7 @@ def read_available_states(acs_id: int, year: int, state_name: str = None):
 
 
 @app.get("/counties_available/{acs_id}/{year}")
-def read_available_states(
+def read_available_counties(
     acs_id: int,
     year: int,
     state: str | int,
