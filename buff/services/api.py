@@ -62,20 +62,49 @@ def read_variables_available(acs_id: int, year: int, group_id: str):
 
 # ---------------------- Geography Endpoint ------------------
 @app.get("/states_available/{acs_id}/{year}")
-def read_available_states(acs_id: int, year: int):
+def read_available_states(acs_id: int, year: int, state_name: str = None):
     try:
         if not is_valid_year(acs_id=acs_id, year=year):
             raise HTTPException(
                 status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
             )
         states: list[dict[str, dict[str, dict[str, int]]]] = get_states(
-            acs_id=acs_id, year=year
+            acs_id=acs_id, year=year, state_name=state_name
         )
         return states[0]
     except CensusAPIError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/counties_available/{acs_id}/{year}}")
-def read_available_states(acs_id: int, year: int):
-    pass
+@app.get("/counties_available/{acs_id}/{year}")
+def read_available_states(
+    acs_id: int,
+    year: int,
+    state: str | int,
+    county_name: str = None,
+):
+    try:
+        if not is_valid_year(acs_id=acs_id, year=year):
+            raise HTTPException(
+                status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
+            )
+        if state is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Did not provide a fips code or state name with the state query parameter.",
+            )
+        if state.isdigit():
+            fips_code = state
+        else:
+            states = get_states(acs_id=acs_id, year=year, state_name=state)
+            fips_code = states[0]["states"][state]["fips"]
+
+        counties: list[dict[str, dict[str, dict[str, int]]]] = get_counties(
+            acs_id=acs_id,
+            year=year,
+            county_name=county_name,
+            fips_code=fips_code,
+        )
+        return counties[0]
+    except CensusAPIError as e:
+        raise HTTPException(status_code=500, detail=str(e))

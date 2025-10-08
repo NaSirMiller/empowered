@@ -91,32 +91,53 @@ def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
 
 # -------------------- Geography ----------------
 @lru_cache(maxsize=128)
-def get_states(acs_id: int, year: int) -> Dict:
+def get_states(acs_id: int, year: int, state_name: str | None) -> Dict:
     url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=state:*"
     try:
         response = requests.get(url)
         response.raise_for_status()
         states = {}
         for state in response.json()[1:]:
-            state_name = state[0]
+            name = state[0]
             fips_code = state[1]
-            states[state_name] = {"fips": fips_code}
+            states[name] = {"fips": fips_code}
+        if state_name is not None and state_name not in states:
+            raise CensusAPIError(
+                f"Failed to fetch the states-FIPS code mapping for {state_name}"
+            )
+        if state_name is not None:
+            return [{"states": {state_name: states[state_name]}}]
+
         return [{"states": states}]
     except Exception as e:
         raise CensusAPIError(f"Failed to fetch the states FIPS code: {e}")
 
 
 @lru_cache(maxsize=256)
-def get_counties(acs_id: int, year: int, fips_code: int):
+def get_counties(
+    acs_id: int,
+    year: int,
+    fips_code: int,
+    county_name: str | None,
+):
     url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=county:*&in=state:{fips_code}"
     try:
+        # Convert state requested to fips code
         response = requests.get(url)
         response.raise_for_status()
         counties = {}
         for county in response.json()[1:]:
-            county_name = county[0]
+            name = county[0]
             county_code = county[-1]
-            counties[county_name] = {"fips_code": county_code}
+            counties[name] = {"fips_code": county_code}
+        if county_name is not None and county_name not in counties:
+            raise CensusAPIError(
+                f"Failed to fetch the counties-FIPS code mapping for {county_name} in "
+            )
+        if county_name is not None:
+            return [
+                {"state": fips_code, "countys": {county_name: counties[county_name]}}
+            ]
         return [{"state": fips_code, "counties": counties}]
     except Exception as e:
         raise CensusAPIError(f"Failed to fetch the counties: {e}")
