@@ -87,3 +87,36 @@ def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
         return [{"id": vid, "purpose": v["label"]} for vid, v in variables.items()]
     except Exception as e:
         raise CensusAPIError(f"Failed to fetch variables for group {group_id}: {e}")
+
+
+# -------------------- Geography ----------------
+@lru_cache(maxsize=128)
+def get_states(acs_id: int, year: int) -> Dict:
+    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=state:*"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        states = {}
+        for state in response.json()[1:]:
+            state_name = state[0]
+            fips_code = state[1]
+            states[state_name] = {"fips": fips_code}
+        return [{"states": states}]
+    except Exception as e:
+        raise CensusAPIError(f"Failed to fetch the states FIPS code: {e}")
+
+
+@lru_cache(maxsize=256)
+def get_counties(acs_id: int, year: int, fips_code: int):
+    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=county:*&in=state:{fips_code}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        counties = {}
+        for county in response.json()[1:]:
+            county_name = county[0]
+            county_code = county[-1]
+            counties[county_name] = {"fips_code": county_code}
+        return [{"state": fips_code, "counties": counties}]
+    except Exception as e:
+        raise CensusAPIError(f"Failed to fetch the counties: {e}")
