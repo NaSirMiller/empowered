@@ -221,3 +221,9 @@ Each dataset has specific years you can query by replacing `YEAR` in the URL.
 https://api.census.gov/data/2021/acs/acs5?get=B19013_001E&for=state:36&key=YOUR_KEY
 
 ```
+
+### ACS 5-Year (2021) – For all cities in New York
+
+```http
+https://api.census.gov/data/2021/acs/acs5?get=B01003_001E,NAME&for=place:*&in=state:36
+```
