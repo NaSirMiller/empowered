@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from getpass import getpass
 from logger_setup import set_logger, get_logger
-from models.sql_client import SQLClient
+from buff.models.sql.sql_client import SQLClient
 import os
 import requests
 

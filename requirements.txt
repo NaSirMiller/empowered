@@ -6,4 +6,5 @@ pydantic
 pyodbc
 requests
 scikit-learn
+sqmodel
 uvicorn
