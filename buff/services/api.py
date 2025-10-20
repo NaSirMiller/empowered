@@ -1,4 +1,15 @@
 from fastapi import FastAPI, HTTPException
+
+from buff.models.pydantic.dataset import DatasetCreate
+from buff.models.sql.schemas import (
+    CensusAvailableYear,
+    CensusDataset,
+    CensusEstimate,
+    CensusGeography,
+    CensusGroup,
+    CensusVariable,
+)
+from buff.repositories.dataset_repo import DatasetRepository
 from buff.services.census import (
     get_years,
     get_groups,
@@ -8,23 +19,49 @@ from buff.services.census import (
     validate_group_id,
     CensusAPIError,
 )
+from buff.services.utils import (
+    get_matching_from_database,
+)
 
 app = FastAPI(title="Census API server")
 
 
+# --------------------- Dataset Endpoint --------------
+@app.post("/dataset/")
+def create_dataset(data: DatasetCreate):
+    DatasetRepository().insert_code(data.code, data.frequency.value)
+    return {"message": "Inserted successfully"}
+
+
+# ------------------ Years Endpoint ------------------
 def is_valid_year(acs_id: int, year: int) -> bool:
     years = get_years(acs_id)
     return year in years
 
 
-# ------------------ Years Endpoint ------------------
 @app.get("/years_available/{acs_id}")
 def read_years_available(acs_id: int):
-    try:
-        years = get_years(acs_id)
-        return {"years_available": years}
-    except (ValueError, CensusAPIError) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    dataset_repo = DatasetRepository()
+    dataset_results = dataset_repo.get_by_code(code=f"acs{acs_id}")
+    if not dataset_results:
+        raise HTTPException(
+            status_code=404,
+            detail=f"The provided acs_id ({acs_id}) is not valid. Must be 1 or 5.",
+        )
+    dataset_id: int = dataset_results[0].id
+    years = get_matching_from_database(
+        model=CensusAvailableYear, params={"dataset_id": dataset_id}
+    )
+    if not years:
+        # No data was found in the database. Request new data.
+        try:
+            years = get_years(acs_id)
+        except (ValueError, CensusAPIError) as e:
+            raise HTTPException(status_code=404, detail=str(e))
+    else:
+        # Convert SQL data to return format
+        years = [record.year for record in years]
+    return {"years_available": years}
 
 
 # ------------------ Groups Endpoint ------------------
