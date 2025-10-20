@@ -90,7 +90,7 @@ class IpumsCity(SQLModel, table=True):
     state_fips_id: int = Field(foreign_key="CensusGeography.state_fips")
 
 
-class IpumsResponderProfile:
+class IpumsResponderProfile(SQLModel, table=True):
     responder_id: str = Field(
         primary_key=True, description="Has form {SERIAL}_{PERNUM}"
     )

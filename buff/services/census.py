@@ -136,8 +136,49 @@ def get_counties(
             )
         if county_name is not None:
             return [
-                {"state": fips_code, "countys": {county_name: counties[county_name]}}
+                {"state": fips_code, "counties": {county_name: counties[county_name]}}
             ]
         return [{"state": fips_code, "counties": counties}]
+    except Exception as e:
+        raise CensusAPIError(f"Failed to fetch the counties: {e}")
+
+
+@lru_cache(maxsize=128)
+def get_cities(
+    acs_id: int,
+    year: int,
+    state_fips_code: int,
+    city_name: str | None,
+    county_fips_code: int | None = None,
+):
+    if county_fips_code is None:
+        url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=place:*&in=state:{state_fips_code}+county:{county_fips_code}"
+    else:
+        url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=place:*&in=state:{state_fips_code}"
+    try:
+        # Convert state requested to fips code
+        response = requests.get(url)
+        response.raise_for_status()
+        cities = {}
+        for row in response.json()[1:]:
+            name = row[0]
+            state_fips = row[1]
+            county_fips = row[2] if len(row) == 4 else None
+            city_fips = row[-1]
+            cities[name] = {
+                "state": state_fips,
+                "cities": {"city_fips_code": city_fips},
+            }
+            if county_fips is not None:
+                cities[name] = cities[name] | {"county": county_fips}
+        if city_name is not None and city_name not in cities:
+            raise CensusAPIError(
+                f"Failed to fetch the cities-FIPS code mapping for {city_name} in "
+            )
+        if city_name is not None:
+            return [
+                {"state": state_fips_code, "cities": {city_name: cities[city_name]}}
+            ]
+        return [{"state": state_fips_code, "cities": cities}]
     except Exception as e:
         raise CensusAPIError(f"Failed to fetch the counties: {e}")
