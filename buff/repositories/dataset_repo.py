@@ -3,7 +3,6 @@ from sqlmodel import SQLModel
 from buff.logger_setup import get_logger
 from buff.models.sql.schemas import CensusDataset
 from buff.models.sql.sql_client import SQLClient
-from buff.services.utils import get_matching_from_database
 from buff.utils import get_db_client
 
 logger = get_logger("repo/dataset_repository")
@@ -14,10 +13,7 @@ class DatasetRepository:
         self.db_client = db_client
 
     def get_by_code(self, code: str) -> list[SQLModel]:
-        dataset_results = get_matching_from_database(
-            model=CensusDataset, params={"code": code}
-        )
-        return dataset_results
+        return self.db_client.select(model=CensusDataset, params={"code": code})
 
     def insert_code(self, code: str, frequency: str) -> None:
         valid_frequencies = {"annual", "quinquennial"}  # every 5 years = quinquennial

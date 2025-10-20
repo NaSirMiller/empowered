@@ -25,6 +25,7 @@ class CensusVariable(SQLModel, table=True):
         primary_key=True,
         description="Variable code of form {group code}_{unique id}",
     )
+    description: str
     group_id: str = Field(default=None, foreign_key="CensusGroup.id", index=True)
     dataset_id: int = Field(foreign_key="CensusDataset.id", index=True)
     year_id: int = Field(foreign_key="CensusAvailableYear.id", index=True)

@@ -2,16 +2,11 @@ from fastapi import FastAPI, HTTPException
 
 from buff.models.pydantic.dataset import DatasetCreate
 from buff.models.pydantic.years import YearCreate
-from buff.models.sql.schemas import (
-    CensusAvailableYear,
-    CensusDataset,
-    CensusEstimate,
-    CensusGeography,
-    CensusGroup,
-    CensusVariable,
-)
 from buff.repositories.dataset_repo import DatasetRepository
 from buff.repositories.years_available_repo import YearsAvailableRepository
+from buff.repositories.groups_repo import CensusGroupRepository
+from buff.repositories.variables_repo import CensusVariableRepository
+from buff.repositories.geography_repo import CensusGeographyRepository
 from buff.services.census import (
     get_years,
     get_groups,
@@ -35,8 +30,17 @@ def create_dataset(data: DatasetCreate):
 
 # ------------------ Years Endpoint ------------------
 def is_valid_year(acs_id: int, year: int) -> bool:
-    years = get_years(acs_id)
-    return year in years
+    """Check if year exists in SQL for the given ACS dataset."""
+    db_client = get_db_client()
+    dataset_repo = DatasetRepository(db_client=db_client)
+    dataset_results = dataset_repo.get_by_code(code=f"acs{acs_id}")
+    if not dataset_results:
+        return False
+    dataset_id: int = dataset_results[0].id
+    years_repo = YearsAvailableRepository(db_client=db_client)
+    years = years_repo.get_years(dataset_id=dataset_id)
+    years_list = [record.year for record in years] if years else []
+    return year in years_list
 
 
 @app.post("/year/")
@@ -59,9 +63,10 @@ def read_years_available(acs_id: int):
     years_available_repo = YearsAvailableRepository(db_client=db_client)
     years = years_available_repo.get_years(dataset_id=dataset_id)
     if not years:
-        # No data was found in the database. Request new data.
+        # No data was found in the database. Request new data from API
         try:
-            years = get_years(acs_id)
+            years_data = get_years(acs_id)
+            years = years_data
         except (ValueError, CensusAPIError) as e:
             raise HTTPException(status_code=404, detail=str(e))
     else:
@@ -73,50 +78,94 @@ def read_years_available(acs_id: int):
 # ------------------ Groups Endpoint ------------------
 @app.get("/groups_available/{acs_id}/{year}")
 def read_groups_available(acs_id: int, year: int):
-    try:
-        if not is_valid_year(acs_id=acs_id, year=year):
-            raise HTTPException(
-                status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
-            )
-        groups = get_groups(acs_id, year)
-        return {"groups_available": groups, "number_of_groups": len(groups)}
-    except CensusAPIError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    db_client = get_db_client()
+    dataset_repo = DatasetRepository(db_client=db_client)
+    dataset_results = dataset_repo.get_by_code(code=f"acs{acs_id}")
+    if not dataset_results:
+        raise HTTPException(
+            status_code=404,
+            detail=f"The provided acs_id ({acs_id}) is not valid.",
+        )
+    dataset_id: int = dataset_results[0].id
+    group_repo = CensusGroupRepository(db_client=db_client)
+    # Check SQL first
+    groups = group_repo.get_groups(dataset_id=dataset_id, year=year)
+    if not groups:
+        # Fall back to API if year exists in API
+        try:
+            if not is_valid_year(acs_id=acs_id, year=year):
+                raise HTTPException(
+                    status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
+                )
+            groups_data = get_groups(acs_id, year)
+            groups = groups_data
+        except CensusAPIError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    else:
+        groups = [record.id for record in groups]
+
+    return {"groups_available": groups, "number_of_groups": len(groups)}
 
 
 # ------------------ Variables Endpoint ------------------
 @app.get("/variables_available/{acs_id}/{year}/{group_id}")
 def read_variables_available(acs_id: int, year: int, group_id: str):
-    try:
-        if not is_valid_year(acs_id=acs_id, year=year):
-            raise HTTPException(
-                status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
-            )
-        if not validate_group_id(acs_id, year, group_id):
-            raise HTTPException(
-                status_code=404,
-                detail=f"Group {group_id} not found for ACS{acs_id} {year}",
-            )
-        variables = get_variables(acs_id, year, group_id)
-        return {"variables_available": variables, "number_of_variables": len(variables)}
-    except CensusAPIError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    db_client = get_db_client()
+    dataset_repo = DatasetRepository(db_client=db_client)
+    dataset_results = dataset_repo.get_by_code(code=f"acs{acs_id}")
+    if not dataset_results:
+        raise HTTPException(
+            status_code=404,
+            detail=f"The provided acs_id ({acs_id}) is not valid.",
+        )
+    dataset_id: int = dataset_results[0].id
+    variable_repo = CensusVariableRepository(db_client=db_client)
+
+    # Check SQL first
+    variables = variable_repo.get_variables(
+        dataset_id=dataset_id, year=year, group_id=group_id
+    )
+    if not variables:
+        try:
+            if not is_valid_year(acs_id=acs_id, year=year):
+                raise HTTPException(
+                    status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
+                )
+            if not validate_group_id(acs_id, year, group_id):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Group {group_id} not found for ACS{acs_id} {year}",
+                )
+            variables_data = get_variables(acs_id, year, group_id)
+            variables = variables_data
+        except CensusAPIError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    else:
+        variables = [record.id for record in variables]
+
+    return {"variables_available": variables, "number_of_variables": len(variables)}
 
 
 # ---------------------- Geography Endpoint ------------------
 @app.get("/states_available/{acs_id}/{year}")
 def read_available_states(acs_id: int, year: int, state_name: str = None):
-    try:
-        if not is_valid_year(acs_id=acs_id, year=year):
-            raise HTTPException(
-                status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
-            )
-        states: list[dict[str, dict[str, dict[str, int]]]] = get_states(
-            acs_id=acs_id, year=year, state_name=state_name
-        )
-        return states[0]
-    except CensusAPIError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    db_client = get_db_client()
+    geo_repo = CensusGeographyRepository(db_client=db_client)
+
+    # Check SQL first
+    states = geo_repo.get_states(acs_id=acs_id, year=year, state_name=state_name)
+    if not states:
+        try:
+            if not is_valid_year(acs_id=acs_id, year=year):
+                raise HTTPException(
+                    status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
+                )
+            states_data = get_states(acs_id=acs_id, year=year, state_name=state_name)
+            states = states_data
+        except CensusAPIError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    return states[0]
 
 
 @app.get("/counties_available/{acs_id}/{year}")
@@ -126,28 +175,42 @@ def read_available_counties(
     state: str | int,
     county_name: str = None,
 ):
-    try:
-        if not is_valid_year(acs_id=acs_id, year=year):
-            raise HTTPException(
-                status_code=404, detail=f"Year {year} not available for ACS{acs_id}"
-            )
-        if state is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Did not provide a fips code or state name with the state query parameter.",
-            )
-        if state.isdigit():
-            fips_code = state
-        else:
-            states = get_states(acs_id=acs_id, year=year, state_name=state)
-            fips_code = states[0]["states"][state]["fips"]
+    db_client = get_db_client()
+    geo_repo = CensusGeographyRepository(db_client=db_client)
 
-        counties: list[dict[str, dict[str, dict[str, int]]]] = get_counties(
-            acs_id=acs_id,
-            year=year,
-            county_name=county_name,
-            fips_code=fips_code,
+    if state is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Did not provide a fips code or state name with the state query parameter.",
         )
-        return counties[0]
-    except CensusAPIError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+    # Resolve state fips code
+    if isinstance(state, str) and not state.isdigit():
+        states = geo_repo.get_states(acs_id=acs_id, year=year, state_name=state)
+        if not states:
+            try:
+                states_data = get_states(acs_id=acs_id, year=year, state_name=state)
+                states = states_data
+            except CensusAPIError as e:
+                raise HTTPException(status_code=500, detail=str(e))
+        fips_code = states[0]["states"][state]["fips"]
+    else:
+        fips_code = int(state)
+
+    # Check SQL first
+    counties = geo_repo.get_counties(
+        acs_id=acs_id, year=year, fips_code=fips_code, county_name=county_name
+    )
+    if not counties:
+        try:
+            counties_data = get_counties(
+                acs_id=acs_id,
+                year=year,
+                county_name=county_name,
+                fips_code=fips_code,
+            )
+            counties = counties_data
+        except CensusAPIError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    return counties[0]
