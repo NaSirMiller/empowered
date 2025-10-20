@@ -1,20 +1,24 @@
 from fastapi import FastAPI, HTTPException
 
-from buff.models.pydantic.datasets import DatasetCreate
-from buff.models.pydantic.years import YearCreate
-from buff.models.pydantic.groups import GroupCreate
-from buff.models.pydantic.variables import VariableCreate
-from buff.models.pydantic.geography import StateCreate, CountyCreate, CityCreate
-from buff.repositories.dataset_repo import DatasetRepository
-from buff.repositories.years_available_repo import YearsAvailableRepository
-from buff.repositories.groups_repo import CensusGroupRepository
-from buff.repositories.variables_repo import CensusVariableRepository
-from buff.repositories.geography_repo import CensusGeographyRepository
-from buff.repositories.dataset_repo import DatasetRepository
-from buff.repositories.years_available_repo import YearsAvailableRepository
-from buff.repositories.groups_repo import CensusGroupRepository
-from buff.repositories.variables_repo import CensusVariableRepository
-from buff.repositories.geography_repo import CensusGeographyRepository
+from buff.models.pydantic.census import (
+    DatasetCreate,
+    YearCreate,
+    GroupCreate,
+    VariableCreate,
+    StateCreate,
+    CountyCreate,
+    CityCreate,
+)
+from buff.repositories.census.datasets_repo import DatasetRepository
+from buff.repositories.census.years_available_repo import YearsAvailableRepository
+from buff.repositories.census.groups_repo import CensusGroupRepository
+from buff.repositories.census.variables_repo import CensusVariableRepository
+from buff.repositories.census.geography_repo import CensusGeographyRepository
+from buff.repositories.census.datasets_repo import DatasetRepository
+from buff.repositories.census.years_available_repo import YearsAvailableRepository
+from buff.repositories.census.groups_repo import CensusGroupRepository
+from buff.repositories.census.variables_repo import CensusVariableRepository
+from buff.repositories.census.geography_repo import CensusGeographyRepository
 from buff.services.census import (
     get_years,
     get_groups,
