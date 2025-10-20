@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 
 from buff.models.pydantic.dataset import DatasetCreate
+from buff.models.pydantic.years import YearCreate
 from buff.models.sql.schemas import (
     CensusAvailableYear,
     CensusDataset,
@@ -10,6 +11,7 @@ from buff.models.sql.schemas import (
     CensusVariable,
 )
 from buff.repositories.dataset_repo import DatasetRepository
+from buff.repositories.years_available_repo import YearsAvailableRepository
 from buff.services.census import (
     get_years,
     get_groups,
@@ -19,9 +21,7 @@ from buff.services.census import (
     validate_group_id,
     CensusAPIError,
 )
-from buff.services.utils import (
-    get_matching_from_database,
-)
+from buff.utils import get_db_client
 
 app = FastAPI(title="Census API server")
 
@@ -39,9 +39,16 @@ def is_valid_year(acs_id: int, year: int) -> bool:
     return year in years
 
 
+@app.post("/year/")
+def create_year(data: YearCreate):
+    YearsAvailableRepository().insert_year(data.dataset_id, data.year)
+    return {"message": "Inserted successfully"}
+
+
 @app.get("/years_available/{acs_id}")
 def read_years_available(acs_id: int):
-    dataset_repo = DatasetRepository()
+    db_client = get_db_client()
+    dataset_repo = DatasetRepository(db_client=db_client)
     dataset_results = dataset_repo.get_by_code(code=f"acs{acs_id}")
     if not dataset_results:
         raise HTTPException(
@@ -49,9 +56,8 @@ def read_years_available(acs_id: int):
             detail=f"The provided acs_id ({acs_id}) is not valid. Must be 1 or 5.",
         )
     dataset_id: int = dataset_results[0].id
-    years = get_matching_from_database(
-        model=CensusAvailableYear, params={"dataset_id": dataset_id}
-    )
+    years_available_repo = YearsAvailableRepository(db_client=db_client)
+    years = years_available_repo.get_years(dataset_id=dataset_id)
     if not years:
         # No data was found in the database. Request new data.
         try:

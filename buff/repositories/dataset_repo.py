@@ -4,12 +4,13 @@ from buff.logger_setup import get_logger
 from buff.models.sql.schemas import CensusDataset
 from buff.models.sql.sql_client import SQLClient
 from buff.services.utils import get_matching_from_database
+from buff.utils import get_db_client
 
 logger = get_logger("repo/dataset_repository")
 
 
 class DatasetRepository:
-    def __init__(self, db_client: SQLClient) -> None:
+    def __init__(self, db_client: SQLClient = get_db_client()) -> None:
         self.db_client = db_client
 
     def get_by_code(self, code: str) -> list[SQLModel]:

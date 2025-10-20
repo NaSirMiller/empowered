@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from typing import Any, Dict, List, Type, Optional
 from sqlmodel import SQLModel, Session, create_engine, select, text
 from logger_setup import get_logger
@@ -37,17 +38,28 @@ class SQLClient:
             raise e
 
     # Generic execute for raw SQL
+    @contextmanager
+    def session_scope(self):
+        session = Session(self.engine)
+        try:
+            yield session
+            session.commit()
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
     def execute(
         self, statement: str, parameters: Optional[Dict[str, Any]] = None
     ) -> List[Any]:
         """Execute a raw SQL statement and return a list of results (SQLModel objects or tuples)."""
         parameters = parameters or {}
-        with Session(self.engine) as session:
+        with self.session_scope() as session:
             try:
                 stmt = text(statement)
                 result = session.exec(stmt, params=parameters)
                 rows = result.all()
-                session.commit()
                 return rows
             except Exception as e:
                 logger.exception(f"Error executing statement: {statement}")
@@ -57,10 +69,9 @@ class SQLClient:
     def insert(self, instances: List[SQLModel]) -> None:
         if not instances:
             return
-        with Session(self.engine) as session:
+        with self.session_scope() as session:
             try:
                 session.add_all(instances)
-                session.commit()
                 for instance in instances:
                     session.refresh(instance)
             except Exception as e:
@@ -73,7 +84,7 @@ class SQLClient:
     ) -> List[SQLModel]:
         """Update rows and return the updated SQLModel objects."""
         updated_rows = []
-        with Session(self.engine) as session:
+        with self.session_scope() as session:
             stmt = select(model)
             for attr, value in where.items():
                 stmt = stmt.where(getattr(model, attr) == value)
@@ -82,7 +93,6 @@ class SQLClient:
                 for attr, value in updates.items():
                     setattr(row, attr, value)
                 updated_rows.append(row)
-            session.commit()
         return updated_rows
 
     # Select using SQLModel
@@ -94,7 +104,7 @@ class SQLClient:
         order_by: Optional[List[Any]] = None,
     ) -> List[SQLModel]:
         """Return a list of SQLModel objects matching the query."""
-        with Session(self.engine) as session:
+        with self.session_scope() as session:
             stmt = select(model)
             filters = filters or {}
             for attr, value in filters.items():
