@@ -1,7 +1,15 @@
 from fastapi import FastAPI, HTTPException
 
-from buff.models.pydantic.dataset import DatasetCreate
+from buff.models.pydantic.datasets import DatasetCreate
 from buff.models.pydantic.years import YearCreate
+from buff.models.pydantic.groups import GroupCreate
+from buff.models.pydantic.variables import VariableCreate
+from buff.models.pydantic.geography import StateCreate, CountyCreate, CityCreate
+from buff.repositories.dataset_repo import DatasetRepository
+from buff.repositories.years_available_repo import YearsAvailableRepository
+from buff.repositories.groups_repo import CensusGroupRepository
+from buff.repositories.variables_repo import CensusVariableRepository
+from buff.repositories.geography_repo import CensusGeographyRepository
 from buff.repositories.dataset_repo import DatasetRepository
 from buff.repositories.years_available_repo import YearsAvailableRepository
 from buff.repositories.groups_repo import CensusGroupRepository
@@ -76,6 +84,21 @@ def read_years_available(acs_id: int):
 
 
 # ------------------ Groups Endpoint ------------------
+
+
+@app.post("/group/")
+def create_group(data: GroupCreate):
+    group_repo = CensusGroupRepository()
+    group_repo.insert_group(
+        dataset_id=data.dataset_id,
+        year_id=data.year_id,
+        group_id=data.group_id,
+        description=data.description,
+        variables_count=data.variables_count,
+    )
+    return {"message": "Inserted successfully"}
+
+
 @app.get("/groups_available/{acs_id}/{year}")
 def read_groups_available(acs_id: int, year: int):
     db_client = get_db_client()
@@ -108,6 +131,19 @@ def read_groups_available(acs_id: int, year: int):
 
 
 # ------------------ Variables Endpoint ------------------
+@app.post("/variable/")
+def create_variable(data: VariableCreate):
+    variable_repo = CensusVariableRepository()
+    variable_repo.insert_variable(
+        dataset_id=data.dataset_id,
+        year_id=data.year_id,
+        group_id=data.group_id,
+        variable_id=data.variable_id,
+        description=data.description,
+    )
+    return {"message": "Inserted successfully"}
+
+
 @app.get("/variables_available/{acs_id}/{year}/{group_id}")
 def read_variables_available(acs_id: int, year: int, group_id: str):
     db_client = get_db_client()
@@ -147,6 +183,18 @@ def read_variables_available(acs_id: int, year: int, group_id: str):
 
 
 # ---------------------- Geography Endpoint ------------------
+@app.post("/state/")
+def create_state(data: StateCreate):
+    geo_repo = CensusGeographyRepository()
+    geo_repo.insert_state(
+        dataset_id=data.dataset_id,
+        year_id=data.year_id,
+        state_fips=data.state_fips,
+        state_name=data.state_name,
+    )
+    return {"message": "Inserted successfully"}
+
+
 @app.get("/states_available/{acs_id}/{year}")
 def read_available_states(acs_id: int, year: int, state_name: str = None):
     db_client = get_db_client()
@@ -166,6 +214,19 @@ def read_available_states(acs_id: int, year: int, state_name: str = None):
             raise HTTPException(status_code=500, detail=str(e))
 
     return states[0]
+
+
+@app.post("/county/")
+def create_county(data: CountyCreate):
+    geo_repo = CensusGeographyRepository()
+    geo_repo.insert_county(
+        dataset_id=data.dataset_id,
+        year_id=data.year_id,
+        state_fips=data.state_fips,
+        county_fips=data.county_fips,
+        county_name=data.county_name,
+    )
+    return {"message": "Inserted successfully"}
 
 
 @app.get("/counties_available/{acs_id}/{year}")
@@ -214,3 +275,17 @@ def read_available_counties(
             raise HTTPException(status_code=500, detail=str(e))
 
     return counties[0]
+
+
+@app.post("/city/")
+def create_city(data: CityCreate):
+    geo_repo = CensusGeographyRepository()
+    geo_repo.insert_city(
+        dataset_id=data.dataset_id,
+        year_id=data.year_id,
+        state_fips=data.state_fips,
+        county_fips=data.county_fips,
+        city_fips=data.city_fips,
+        city_name=data.city_name,
+    )
+    return {"message": "Inserted successfully"}
