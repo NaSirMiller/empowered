@@ -55,7 +55,7 @@ def is_valid_year(
 
 
 # --------------------- Dataset Endpoint --------------
-@app.post("/dataset/")
+@app.post("/census/dataset/")
 def create_dataset(data: DatasetCreate):
     DatasetRepository().insert_code(data.code, data.frequency.value)
     return {"message": "Inserted successfully"}
@@ -70,7 +70,7 @@ def create_year(data: YearCreate):
     return {"message": "Inserted successfully"}
 
 
-@app.get("/years_available/{acs_id}")
+@app.get("/census/years_available/{acs_id}")
 def read_years_available(acs_id: int):
     db_client = get_db_client()
     dataset_repo = DatasetRepository(db_client=db_client)
@@ -99,7 +99,7 @@ def read_years_available(acs_id: int):
 # ------------------ Groups Endpoint ------------------
 
 
-@app.post("/group/")
+@app.post("/census/group/")
 def create_group(data: GroupCreate):
     group_repo = CensusGroupRepository()
     group_repo.insert_group(
@@ -112,7 +112,7 @@ def create_group(data: GroupCreate):
     return {"message": "Inserted successfully"}
 
 
-@app.get("/groups_available/{acs_id}/{year}")
+@app.get("/census/groups_available/{acs_id}/{year}")
 def read_groups_available(acs_id: int, year: int):
     db_client = get_db_client()
     dataset_repo = DatasetRepository(db_client=db_client)
@@ -145,7 +145,7 @@ def read_groups_available(acs_id: int, year: int):
 
 
 # ------------------ Variables Endpoint ------------------
-@app.post("/variable/")
+@app.post("/census/variable/")
 def create_variable(data: VariableCreate):
     variable_repo = CensusVariableRepository()
     variable_repo.insert_variable(
@@ -158,7 +158,7 @@ def create_variable(data: VariableCreate):
     return {"message": "Inserted successfully"}
 
 
-@app.get("/variables_available/{acs_id}/{year}/{group_id}")
+@app.get("/census/variables_available/{acs_id}/{year}/{group_id}")
 def read_variables_available(acs_id: int, year: int, group_id: str):
     db_client = get_db_client()
     dataset_repo = DatasetRepository(db_client=db_client)
@@ -200,7 +200,7 @@ def read_variables_available(acs_id: int, year: int, group_id: str):
 
 
 # ---------------------- Geography Endpoint ------------------
-@app.post("/state/")
+@app.post("/census/state/")
 def create_state(data: StateCreate):
     geo_repo = CensusGeographyRepository()
     geo_repo.insert_state(
@@ -212,7 +212,7 @@ def create_state(data: StateCreate):
     return {"message": "Inserted successfully"}
 
 
-@app.get("/states_available/{acs_id}/{year}")
+@app.get("/census/states_available/{acs_id}/{year}")
 def read_available_states(acs_id: int, year: int, state_name: str = None):
     db_client = get_db_client()
     geo_repo = CensusGeographyRepository(db_client=db_client)
@@ -241,7 +241,7 @@ def read_available_states(acs_id: int, year: int, state_name: str = None):
     return states[0]
 
 
-@app.post("/county/")
+@app.post("/census/county/")
 def create_county(data: CountyCreate):
     geo_repo = CensusGeographyRepository()
     geo_repo.insert_county(
@@ -254,7 +254,7 @@ def create_county(data: CountyCreate):
     return {"message": "Inserted successfully"}
 
 
-@app.get("/counties_available/{acs_id}/{year}")
+@app.get("/census/counties_available/{acs_id}/{year}")
 def read_available_counties(
     acs_id: int,
     year: int,
@@ -314,7 +314,7 @@ def read_available_counties(
     return counties[0]
 
 
-@app.post("/city/")
+@app.post("/census/city/")
 def create_city(data: CityCreate):
     geo_repo = CensusGeographyRepository()
     geo_repo.insert_city(
@@ -328,7 +328,7 @@ def create_city(data: CityCreate):
     return {"message": "Inserted successfully"}
 
 
-@app.get("/cities_available/{acs_id}/{year}")
+@app.get("/census/cities_available/{acs_id}/{year}")
 def read_available_cities(
     acs_id: int,
     year: int,
@@ -392,3 +392,7 @@ def read_available_cities(
             )
     except CensusAPIError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# -------------------------- IPUMS ------------------------------
+base_ipums_url = "https://api.ipums.org/metadata/usa/variables"
