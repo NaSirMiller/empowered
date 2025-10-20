@@ -1,5 +1,4 @@
 from typing import Any, Dict, List, Type, Optional
-import pandas as pd
 from sqlmodel import SQLModel, Session, create_engine, select, text
 from logger_setup import get_logger
 
@@ -40,7 +39,8 @@ class SQLClient:
     # Generic execute for raw SQL
     def execute(
         self, statement: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> pd.DataFrame:
+    ) -> List[Any]:
+        """Execute a raw SQL statement and return a list of results (SQLModel objects or tuples)."""
         parameters = parameters or {}
         with Session(self.engine) as session:
             try:
@@ -48,14 +48,7 @@ class SQLClient:
                 result = session.exec(stmt, params=parameters)
                 rows = result.all()
                 session.commit()
-
-                if not rows:
-                    return pd.DataFrame()
-                # Detect SQLModel row objects
-                if hasattr(rows[0], "dict"):
-                    return pd.DataFrame([row.dict() for row in rows])
-                else:
-                    return pd.DataFrame(rows, columns=result.keys())
+                return rows
             except Exception as e:
                 logger.exception(f"Error executing statement: {statement}")
                 raise
@@ -77,7 +70,9 @@ class SQLClient:
     # Update objects using SQLModel (pass a dictionary of changes)
     def update(
         self, model: Type[SQLModel], where: Dict[str, Any], updates: Dict[str, Any]
-    ):
+    ) -> List[SQLModel]:
+        """Update rows and return the updated SQLModel objects."""
+        updated_rows = []
         with Session(self.engine) as session:
             stmt = select(model)
             for attr, value in where.items():
@@ -86,7 +81,9 @@ class SQLClient:
             for row in results:
                 for attr, value in updates.items():
                     setattr(row, attr, value)
+                updated_rows.append(row)
             session.commit()
+        return updated_rows
 
     # Select using SQLModel
     def select(
@@ -95,7 +92,8 @@ class SQLClient:
         filters: Optional[Dict[str, Any]] = None,
         group_by: Optional[List[Any]] = None,
         order_by: Optional[List[Any]] = None,
-    ) -> pd.DataFrame:
+    ) -> List[SQLModel]:
+        """Return a list of SQLModel objects matching the query."""
         with Session(self.engine) as session:
             stmt = select(model)
             filters = filters or {}
@@ -107,9 +105,4 @@ class SQLClient:
                 stmt = stmt.order_by(*order_by)
 
             result = session.exec(stmt).all()
-            if not result:
-                return pd.DataFrame()
-            if hasattr(result[0], "dict"):
-                return pd.DataFrame([r.dict() for r in result])
-            else:
-                return pd.DataFrame(result, columns=result.keys())
+            return result
