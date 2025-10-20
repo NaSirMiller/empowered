@@ -8,12 +8,20 @@ import requests
 
 def main():
     set_logger()
+    load_dotenv()
 
     # Call ACS1 (acs_id=1)
+    # resp = requests.get("http://127.0.0.1:8000/counties_available/1/2008")
+    # print(resp.status_code)
+    # print(resp.text)
 
-    resp = requests.get("http://127.0.0.1:8000/counties_available/1/2008")
-    print(resp.status_code)
-    print(resp.text)
+    client = SQLClient(
+        server=os.getenv("SQL_SERVER"),
+        database=os.getenv("SQL_DATABASE"),
+        username=os.getenv("SQL_USERNAME"),  # or input("Enter username: ")
+        password=getpass(f"Enter SQLServer password for {os.getenv('SQL_USERNAME')}:"),
+        driver=os.getenv("SQL_DRIVER").replace(" ", "+"),  # or input("Enter driver: ")
+    )
 
 
 if __name__ == "__main__":
