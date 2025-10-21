@@ -3,27 +3,33 @@ from typing import Optional
 
 
 class RaceCreate(BaseModel):
+    race_id: int
     label: str
 
 
 class EducationalAttainmentCreate(BaseModel):
+    educational_attainment_id: int
     label: str
 
 
 class DegreeFieldCreate(BaseModel):
+    degree_field_id: int
     label: str
     is_degree_field2: Optional[bool] = None
 
 
 class AnnualIncomeCreate(BaseModel):
+    income_id: int
     amount: int
 
 
 class WageIncomeCreate(BaseModel):
+    income_id: int
     amount: int
 
 
 class CityCreate(BaseModel):
+    city_id: int
     name: str
     state_fips_id: int
 
