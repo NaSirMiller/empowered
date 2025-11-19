@@ -1,6 +1,7 @@
 beautifulsoup4
 python-dotenv
 fastapi
+fire
 pandas
 pydantic
 pyodbc

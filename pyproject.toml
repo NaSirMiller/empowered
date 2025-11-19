@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "buff"
-version = "0.1.0"
-description = "Buff project utilities and API"
+name = "empowered"
+version = "0.1.3"
+description = "EmpowerEd project utilities and API"
 authors = [
     { name="Na'Sir Miller" }
 ]
 
 [tool.setuptools]
-packages = ["buff"]
+packages = ["empowered"]
