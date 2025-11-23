@@ -374,7 +374,7 @@ def read_available_places(
     year: int,
     state: str | int,
     county: str | int | None = None,
-    city_name: str | None = None,
+    place_name: str | None = None,
     dataset_repo: DatasetRepository = Depends(get_dataset_repo),
     years_repo: YearsAvailableRepository = Depends(get_years_repo),
     geo_repo: GeographyRepository = Depends(get_geography_repo),
@@ -419,7 +419,7 @@ def read_available_places(
             return stored_places
 
         return get_places(
-            city_name=city_name,
+            place_name=place_name,
             acs_id=acs_id,
             year=year,
             state_fips_code=state_fips,
@@ -435,14 +435,14 @@ async def read_estimates(
     year: int,
     variables: List[str],
     state: int | None = None,
-    city: int | None = None,
+    place: int | None = None,
     county: int | None = None,
 ):
-    if not any([state, city, county]):
-        raise HTTPException(401, "Specify a state, county, or city FIPS.")
+    if not any([state, place, county]):
+        raise HTTPException(401, "Specify a state, county, or place FIPS.")
 
-    if city is not None and state is None:
-        raise HTTPException(401, "City FIPS requires a state FIPS.")
+    if place is not None and state is None:
+        raise HTTPException(401, "Place FIPS requires a state FIPS.")
 
     if not variables:
         raise HTTPException(401, "At least one variable must be provided.")
@@ -455,8 +455,8 @@ async def read_estimates(
         f"?get={variables_stringified}"
     )
 
-    if city:
-        url = f"{base_url}&for=place:{city}&in=state:{state}&key={api_key}"
+    if place:
+        url = f"{base_url}&for=place:{place}&in=state:{state}&key={api_key}"
     elif state:
         url = f"{base_url}&for=state:{state}&key={api_key}"
     else:
