@@ -6,6 +6,7 @@ from empowered.models.pydantic.census import (
 )
 
 from empowered.repositories.census.datasets_repo import DatasetRepository
+from empowered.repositories.census.factory import RepositoryFactory
 from empowered.repositories.census.years_available_repo import YearsAvailableRepository
 from empowered.repositories.census.groups_repo import CensusGroupRepository
 from empowered.repositories.census.variables_repo import CensusVariableRepository
@@ -24,34 +25,38 @@ from empowered.services.census import (
     validate_group_id,
 )
 
-from empowered.utils import get_db_client
+from empowered.utils import get_sql_client
 
 
 app = FastAPI(title="Census API Server")
 
 
-def get_dataset_repo():
-    return DatasetRepository(db_client=get_db_client())
+def get_repo_factory():
+    return RepositoryFactory(get_sql_client())
 
 
-def get_years_repo():
-    return YearsAvailableRepository(db_client=get_db_client())
+def get_dataset_repo(factory: RepositoryFactory = Depends(get_repo_factory)):
+    return factory.dataset()
 
 
-def get_group_repo():
-    return CensusGroupRepository(db_client=get_db_client())
+def get_years_repo(factory: RepositoryFactory = Depends(get_repo_factory)):
+    return factory.years()
 
 
-def get_variable_repo():
-    return CensusVariableRepository(db_client=get_db_client())
+def get_group_repo(factory: RepositoryFactory = Depends(get_repo_factory)):
+    return factory.group()
 
 
-def get_geography_repo():
-    return GeographyRepository(db_client=get_db_client())
+def get_variable_repo(factory: RepositoryFactory = Depends(get_repo_factory)):
+    return factory.variable()
 
 
-def get_estimate_repo():
-    return CensusEstimateRepository(db_client=get_db_client())
+def get_geography_repo(factory: RepositoryFactory = Depends(get_repo_factory)):
+    return factory.geography()
+
+
+def get_estimate_repo(factory: RepositoryFactory = Depends(get_repo_factory)):
+    return factory.estimate()
 
 
 def is_valid_year(

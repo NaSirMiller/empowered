@@ -57,8 +57,12 @@ def get_years(acs_id: int) -> List[int]:
 
 # ------------------ Groups ------------------
 @lru_cache(maxsize=32)
-def get_groups(acs_id: int, year: int) -> List[Dict]:
-    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}/groups/"
+def get_groups(
+    acs_id: int,
+    year: int,
+    api_key: str = get_census_api_key(),
+) -> List[Dict]:
+    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}/groups/&key={api_key}"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -80,8 +84,13 @@ def validate_group_id(acs_id: int, year: int, group_id: str) -> bool:
 
 # ------------------ Variables ------------------
 @lru_cache(maxsize=64)
-def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
-    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}/groups/{group_id}.json"
+def get_variables(
+    acs_id: int,
+    year: int,
+    group_id: str,
+    api_key: str = get_census_api_key(),
+) -> List[Dict]:
+    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}/groups/{group_id}.json&key={api_key}"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -93,8 +102,13 @@ def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
 
 # -------------------- Geography ----------------
 @lru_cache(maxsize=128)
-def get_states(acs_id: int, year: int, state_name: str | None):
-    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=state:*"
+def get_states(
+    acs_id: int,
+    year: int,
+    state_name: str | None,
+):
+    api_key: str = (get_census_api_key(),)
+    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=state:*&key={api_key}"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -121,10 +135,11 @@ def get_counties(
     year: int,
     fips_code: int,
     county_name: str | None,
+    api_key: str = get_census_api_key(),
 ):
     url = (
         f"https://api.census.gov/data/{year}/acs/acs{acs_id}"
-        f"?get=NAME&for=county:*&in=state:{fips_code}"
+        f"?get=NAME&for=county:*&in=state:{fips_code}&key={api_key}"
     )
     try:
         response = requests.get(url)
@@ -161,10 +176,11 @@ def get_places(
     year: int,
     state_fips_code: int,
     place_name: str | None = None,
+    api_key: str = get_census_api_key(),
 ):
     url = (
         f"https://api.census.gov/data/{year}/acs/acs{acs_id}"
-        f"?get=NAME&for=place:*&in=state:{state_fips_code}"
+        f"?get=NAME&for=place:*&in=state:{state_fips_code}&key={api_key}"
     )
 
     try:

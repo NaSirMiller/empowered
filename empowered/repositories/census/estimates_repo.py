@@ -2,12 +2,12 @@ from sqlmodel import SQLModel
 
 from empowered.models.sql.sql_client import SQLClient
 from empowered.models.sql.schemas import CensusEstimate
-from empowered.utils import get_db_client
+from empowered.utils import get_sql_client
 from typing import List, Optional
 
 
 class CensusEstimateRepository:
-    def __init__(self, db_client: SQLClient = get_db_client()) -> None:
+    def __init__(self, db_client: SQLClient = get_sql_client()) -> None:
         self.db_client = db_client
 
     def get_estimates(

@@ -127,9 +127,7 @@ ACS_VARIABLES = [
     "B17001_026E",
     "B17001_027E",
     "B17001_028E",
-]
-
-YEARS_WANTED = [2009, 2014, 2019, 2024]
+]  # Up to 50 at once
 
 BASE_URL = "http://localhost:8000/census/"
 
@@ -146,35 +144,8 @@ class IngestError(Exception):
 def main():
     set_logger()
     load_dotenv()
-
-    for dataset in ACS_DATASETS:
-        dataset_code = dataset["code"]
-        dataset_id = dataset["id"]
-        try:
-            requests.post(
-                f"{BASE_URL}/datasets",
-                json=dataset,
-            )  # create dataset
-            years_response = requests.get(
-                f"{BASE_URL}/years/{dataset_code}/{dataset_id}/"
-            )
-            years = years_response["years_available"]
-            for year in years:
-                groups_response = requests.get(
-                    f"{BASE_URL}/groups/{dataset_code}/{dataset_id}/{year}"
-                )
-                groups_avail = groups_response["groups_available"]
-                for group in groups_response:
-                    group_id = group["id"]
-                    variables_response = requests.get(
-                        f"{BASE_URL}/variables/{dataset_code}/{dataset_id}/{year}/{group_id}"
-                    )
-                    variables_avail = variables_response["variables_available"]
-                    for variable in variables_avail:
-                        variable_id = variable["id"]
-
-        except Exception as e:
-            raise IngestError(e)
+    logger = get_logger()
+    logger.info("Completed logging setup.")
 
 
 if __name__ == "__main__":
