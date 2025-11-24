@@ -13,7 +13,7 @@ from empowered.repositories.census.variables_repo import CensusVariableRepositor
 from empowered.repositories.census.estimates_repo import CensusEstimateRepository
 from empowered.repositories.census.geography_repo import GeographyRepository
 
-from empowered.api_clients.census import (
+from empowered.api.census import (
     get_places,
     get_counties,
     get_estimate,

@@ -1,7 +1,7 @@
 # empowered/services/census_service.py
 
 from typing import List, Dict, Optional
-from empowered.api_clients.census import (
+from empowered.api.census import (
     get_groups as api_get_groups,
     get_variables as api_get_variables,
     get_states as api_get_states,
