@@ -1,10 +1,9 @@
-from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from functools import lru_cache
 import re
 import requests
 from requests import Response
-from typing import List, Dict
+from typing import List, Dict, Optional
 from empowered.logger_setup import get_logger
 from empowered.utils import get_census_api_key
 
@@ -16,47 +15,6 @@ ACS1_URL = "https://www.census.gov/data/developers/data-sets/acs-1year.html"
 
 class CensusAPIError(Exception):
     pass
-
-
-def get_estimate(
-    acs_id: int,
-    year: int,
-    variables: List[str],
-    batch_size: int = 50,
-    state_ids: List[int] | None = None,
-    county_ids: List[int] = None,
-    place_ids: List[int] = None,
-):
-    if state_ids is None and county_ids is None and place_ids is None:
-        raise CensusAPIError(
-            f"No geography was specified. Please provide one of the list of state fips, county fips, and place fips: {e}"
-        )
-    variables_stringified: List[str] = ",".join(variables)
-    api_key = get_census_api_key()
-
-    # Census API only allows one level of geography, so select the lowest level first (place <- county <- state)
-    geography_ids: List[str] = []
-    geography_level: str = None
-    if place_ids is not None:
-        geography_ids = place_ids
-        geography_level = "place"
-    elif county_ids is not None:
-        county_ids = geography_ids
-        geography_level = "county"
-    else:
-        geography_ids = state_ids
-        geography_level = "state"
-
-    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get={variables_stringified}&for={geography_level}:{{gid}}&key={api_key}"
-
-    response: Response = None
-    if "*" in geography_ids:
-        # Every available item in the geography level is fetched
-        response = requests.get(url)
-    else:
-        current_batch: List[int]
-        for current_index in range(0, len(geography_ids), batch_size):
-            current_batch = geography_ids[current_index : current_index + batch_size]
 
 
 # ------------------ HTML Parsing ------------------
@@ -135,26 +93,26 @@ def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
 
 # -------------------- Geography ----------------
 @lru_cache(maxsize=128)
-def get_states(acs_id: int, year: int, state_name: str | None) -> Dict:
+def get_states(acs_id: int, year: int, state_name: str | None):
     url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=state:*"
     try:
         response = requests.get(url)
         response.raise_for_status()
-        states = {}
-        for state in response.json()[1:]:
-            name = state[0]
-            fips_code = state[1]
-            states[name] = {"fips": fips_code}
-        if state_name is not None and state_name not in states:
-            raise CensusAPIError(
-                f"Failed to fetch the states-FIPS code mapping for {state_name}"
-            )
-        if state_name is not None:
-            return [{"states": {state_name: states[state_name]}}]
 
-        return [{"states": states}]
+        rows = response.json()[1:]
+
+        states_list = [{"state_name": row[0], "state_fips": row[1]} for row in rows]
+
+        if state_name:
+            match = [s for s in states_list if s["state_name"] == state_name]
+            if not match:
+                raise CensusAPIError(f"State '{state_name}' not found.")
+            return {"states": match}
+
+        return {"states": states_list}
+
     except Exception as e:
-        raise CensusAPIError(f"Failed to fetch the states FIPS code: {e}")
+        raise CensusAPIError(f"Failed to fetch states: {e}")
 
 
 @lru_cache(maxsize=256)
@@ -164,27 +122,37 @@ def get_counties(
     fips_code: int,
     county_name: str | None,
 ):
-    url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get=NAME&for=county:*&in=state:{fips_code}"
+    url = (
+        f"https://api.census.gov/data/{year}/acs/acs{acs_id}"
+        f"?get=NAME&for=county:*&in=state:{fips_code}"
+    )
     try:
-        # Convert state requested to fips code
         response = requests.get(url)
         response.raise_for_status()
-        counties = {}
-        for county in response.json()[1:]:
-            name = county[0]
-            county_code = county[-1]
-            counties[name] = {"fips_code": county_code}
-        if county_name is not None and county_name not in counties:
-            raise CensusAPIError(
-                f"Failed to fetch the counties-FIPS code mapping for {county_name} in "
-            )
-        if county_name is not None:
-            return [
-                {"state": fips_code, "counties": {county_name: counties[county_name]}}
-            ]
-        return [{"state": fips_code, "counties": counties}]
+
+        rows = response.json()[1:]
+
+        counties_list = [
+            {
+                "county_name": row[0],
+                "county_fips": row[-1],
+                "state_fips": str(fips_code),
+            }
+            for row in rows
+        ]
+
+        if county_name:
+            match = [c for c in counties_list if c["county_name"] == county_name]
+            if not match:
+                raise CensusAPIError(
+                    f"County '{county_name}' not found in state {fips_code}."
+                )
+            return {"state_fips": str(fips_code), "counties": match}
+
+        return {"state_fips": str(fips_code), "counties": counties_list}
+
     except Exception as e:
-        raise CensusAPIError(f"Failed to fetch the counties: {e}")
+        raise CensusAPIError(f"Failed to fetch counties: {e}")
 
 
 @lru_cache(maxsize=128)
@@ -203,46 +171,77 @@ def get_places(
         response = requests.get(url)
         response.raise_for_status()
 
-        data = response.json()
-        header = data[0]
-        rows = data[1:]
+        rows = response.json()[1:]
 
-        places = {}
-
-        for row in rows:
-            name = row[0]
-            state_fips = row[1]
-            place_fips = row[2]
-
-            places[name] = {
-                "state_fips": state_fips,
-                "place_fips": place_fips,
+        places_list = [
+            {
+                "place_name": row[0],
+                "state_fips": row[1],
+                "place_fips": row[2],
             }
+            for row in rows
+        ]
 
         if place_name:
-            if place_name not in places:
+            match = [p for p in places_list if p["place_name"] == place_name]
+            if not match:
                 raise CensusAPIError(
                     f"Place '{place_name}' not found in state {state_fips_code}"
                 )
-            return [
-                {"state": state_fips_code, "places": {place_name: places[place_name]}}
-            ]
+            return {"state_fips": str(state_fips_code), "places": match}
 
-        return [{"state": state_fips_code, "places": places}]
+        return {"state_fips": str(state_fips_code), "places": places_list}
 
     except Exception as e:
-        raise CensusAPIError(f"Failed to fetch place list: {e}")
+        raise CensusAPIError(f"Failed to fetch places: {e}")
 
 
 # -------------------- Estimates ----------------
 
 
-async def get_estimate(
-    session: ClientSession,
-    url: str,
-    gid: int,
-    geography_level: str,
+def get_estimate(
+    acs_id: int,
+    year: int,
+    variables: List[str],
+    state_fips: Optional[int] = None,
+    place_fips: Optional[int] = None,
+    county_fips: Optional[int] = None,
+    api_key: str = get_census_api_key(),
 ):
-    async with session.get(url.format(gid, geography_level)) as resp:
-        resp.raise_for_status()
-        return await resp.json()
+    if state_fips is None and place_fips is None and county_fips is None:
+        raise CensusAPIError(
+            "One of the state fips, place fips, or county fips must be provided.",
+        )
+    variables_stringified = ",".join(variables)
+    base_url = (
+        f"https://api.census.gov/data/{year}/acs/acs{acs_id}"
+        f"?get={variables_stringified}"
+    )
+
+    if place_fips is not None:
+        url = (
+            f"{base_url}"
+            f"&for=place:{place_fips}"
+            f"&in=state:{state_fips}"
+            f"&key={api_key}"
+        )
+    elif state_fips is not None:
+        url = f"{base_url}&for=state:{state_fips}&key={api_key}"
+    else:
+        url = f"{base_url}&for=county:{county_fips}&key={api_key}"
+
+    estimates = []
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        rows = response.json()[1:]
+
+        for row in rows:
+            row_estimates = [
+                {"variable": var, "estimate": row[i]} for i, var in enumerate(variables)
+            ]
+            estimates.append(row_estimates)
+        return {"estimates": estimates}
+
+    except Exception as e:
+        raise CensusAPIError(f"Failed to fetch estimates: {e}")

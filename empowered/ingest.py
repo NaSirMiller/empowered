@@ -129,24 +129,52 @@ ACS_VARIABLES = [
     "B17001_028E",
 ]
 
+YEARS_WANTED = [2009, 2014, 2019, 2024]
+
+BASE_URL = "http://localhost:8000/census/"
+
+ACS_DATASETS = [
+    {"code": "acs", "frequency": 1, "id": "acs1"},
+    {"code": "acs", "frequency": 5, "id": "acs5"},
+]
+
+
+class IngestError(Exception):
+    pass
+
 
 def main():
     set_logger()
     load_dotenv()
 
-    datasets = [
-        {"code": "acs1", "frequency": "annual"},
-        {"code": "acs5", "frequency": "quinquennial"},
-    ]
+    for dataset in ACS_DATASETS:
+        dataset_code = dataset["code"]
+        dataset_id = dataset["id"]
+        try:
+            requests.post(
+                f"{BASE_URL}/datasets",
+                json=dataset,
+            )  # create dataset
+            years_response = requests.get(
+                f"{BASE_URL}/years/{dataset_code}/{dataset_id}/"
+            )
+            years = years_response["years_available"]
+            for year in years:
+                groups_response = requests.get(
+                    f"{BASE_URL}/groups/{dataset_code}/{dataset_id}/{year}"
+                )
+                groups_avail = groups_response["groups_available"]
+                for group in groups_response:
+                    group_id = group["id"]
+                    variables_response = requests.get(
+                        f"{BASE_URL}/variables/{dataset_code}/{dataset_id}/{year}/{group_id}"
+                    )
+                    variables_avail = variables_response["variables_available"]
+                    for variable in variables_avail:
+                        variable_id = variable["id"]
 
-    for dataset in datasets:
-        requests.post("http://localhost:8000/census/dataset", json=dataset)
-        years_response = requests.get(
-            f"http://localhost:8000/census/{dataset["code"]}/years"
-        )
-        years = years_response["years_available"]
-        for variable in ACS_VARIABLES:
-            requests.post("http://localhost:8000/census/variable", json={})
+        except Exception as e:
+            raise IngestError(e)
 
 
 if __name__ == "__main__":

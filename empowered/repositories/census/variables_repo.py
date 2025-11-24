@@ -25,22 +25,31 @@ class VariablesRepository:
             parameters["id"] = variable_id
         return self.db_client.select(model=CensusVariable, params=parameters)
 
-    def insert_variable(
+    def insert_variables(
         self,
+        variables: list[dict],
         dataset_id: int,
         year_id: int,
         group_id: str,
-        variable_id: str,
-        description: str,
     ) -> None:
-        return self.db_client.insert(
-            instances=[
-                CensusVariable(
-                    id=variable_id,
-                    dataset_id=dataset_id,
-                    description=description,
-                    year_id=year_id,
-                    group_id=group_id,
-                )
-            ]
-        )
+        """
+        Insert multiple CensusVariable rows in batch.
+
+        Each item in `variables` must be:
+        {
+            "variable_id": str,
+            "description": str
+        }
+        """
+        instances = [
+            CensusVariable(
+                id=v["variable_id"],
+                dataset_id=dataset_id,
+                description=v["description"],
+                year_id=year_id,
+                group_id=group_id,
+            )
+            for v in variables
+        ]
+
+        return self.db_client.insert(instances=instances)

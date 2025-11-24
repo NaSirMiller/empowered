@@ -17,22 +17,31 @@ class GroupsRepository:
             parameters["id"] = group_id
         return self.db_client.select(model=CensusGroup, params=parameters)
 
-    def insert_group(
+    def insert_groups(
         self,
+        groups: list[dict],
         dataset_id: int,
         year_id: int,
-        group_id: str,
-        description: str,
-        variables_count: int,
     ) -> None:
-        return self.db_client.insert(
-            instances=[
-                CensusGroup(
-                    id=group_id,
-                    dataset_id=dataset_id,
-                    description=description,
-                    variables_count=variables_count,
-                    year_id=year_id,
-                )
-            ]
-        )
+        """
+        Insert multiple CensusGroup rows in batch.
+
+        Each item in `groups` must be:
+        {
+            "group_id": str,
+            "description": str,
+            "variables_count": int
+        }
+        """
+        instances = [
+            CensusGroup(
+                id=g["group_id"],
+                dataset_id=dataset_id,
+                description=g["description"],
+                variables_count=g["variables_count"],
+                year_id=year_id,
+            )
+            for g in groups
+        ]
+
+        return self.db_client.insert(instances=instances)

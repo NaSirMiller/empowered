@@ -3,7 +3,7 @@ from sqlmodel import SQLModel
 from empowered.models.sql.sql_client import SQLClient
 from empowered.models.sql.schemas import CensusEstimate
 from empowered.utils import get_db_client
-from typing import Optional
+from typing import List, Optional
 
 
 class CensusEstimateRepository:
@@ -17,7 +17,7 @@ class CensusEstimateRepository:
         dataset_id: Optional[int] = None,
         variable_id: Optional[str] = None,
         group_id: Optional[str] = None,
-    ) -> list[SQLModel]:
+    ) -> list[dict]:
         """
         Fetch census estimates filtered by any combination of parameters.
         """
@@ -32,30 +32,35 @@ class CensusEstimateRepository:
             params["variable_id"] = variable_id
         if group_id is not None:
             params["group_id"] = group_id
+        results = self.db_client.select(model=CensusEstimate, filters=params)
+        return [r.model_dump() for r in results]
 
-        return self.db_client.select(model=CensusEstimate, params=params)
-
-    def insert_estimate(
+    def insert_estimates(
         self,
         place_fips: int,
+        county_fips: Optional[int],
+        state_fips: int,
         year_id: int,
         dataset_id: int,
-        variable_id: str,
-        group_id: str,
-        estimate: float,
-        margin_of_error: float | None = None,
+        estimates: List[
+            dict
+        ],  # each dict: {"variable": str, "value": float, "margin_of_error": Optional[float]}
     ) -> None:
-        """
-        Insert a single CensusEstimate record.
-        """
-        instance = CensusEstimate(
-            id=None,
-            place_fips=place_fips,
-            year_id=year_id,
-            dataset_id=dataset_id,
-            variable_id=variable_id,
-            group_id=group_id,
-            estimate=estimate,
-            margin_of_error=margin_of_error,
-        )
-        self.db_client.insert(instances=[instance])
+        instances = []
+        for estimate in estimates:
+            instances.append(
+                CensusEstimate(
+                    id=None,
+                    place_fips=place_fips,
+                    county_fips=county_fips,
+                    state_fips=state_fips,
+                    year_id=year_id,
+                    dataset_id=dataset_id,
+                    variable_id=estimate["variable"],
+                    group_id=estimate["variable"].split("_")[0],
+                    estimate=float(estimate["value"]),
+                    margin_of_error=estimate.get("margin_of_error"),
+                )
+            )
+        if instances:
+            self.db_client.insert(instances=instances)

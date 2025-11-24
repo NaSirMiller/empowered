@@ -1,12 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from enum import Enum
 
-from typing import Optional
+from typing import List, Optional
 
 
 class FrequencyEnum(str, Enum):
-    ANNUAL = "annual"
-    QUINQUENNIAL = "quinquennial"
+    ANNUAL = 1
+    QUINQUENNIAL = 5
 
 
 class DatasetCreate(BaseModel):
@@ -65,3 +65,41 @@ class VariableCreate(BaseModel):
     group_id: str
     variable_id: str
     description: Optional[str] = None
+
+
+class EstimateRequest(BaseModel):
+    variables: List[str]
+    state: Optional[int] = None
+    county: Optional[int] = None
+    place: Optional[int] = None
+
+    @field_validator("variables")
+    def validate_variables(cls, v):
+        if not v:
+            raise ValueError("At least one variable must be provided.")
+        return v
+
+    @field_validator("place")
+    def validate_place_requires_state(cls, v, values):
+        if v is not None and values.get("state") is None:
+            raise ValueError("Place FIPS requires a state FIPS.")
+        return v
+
+    @field_validator("county")
+    def validate_place_requires_state(cls, v, values):
+        if v is not None and values.get("state") is None:
+            raise ValueError("Place FIPS requires a state FIPS.")
+        return v
+
+    @field_validator("*")
+    def validate_geography_exclusive(cls, _, values):
+        geo_fields = ["state", "county", "place"]
+        provided = [f for f in geo_fields if values.get(f) is not None]
+
+        if len(provided) == 0:
+            raise ValueError("Specify a state, county, or place FIPS.")
+
+        if len(provided) > 1:
+            raise ValueError("Only one of state, county, or place may be provided.")
+
+        return _
