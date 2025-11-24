@@ -1,5 +1,4 @@
 import asyncio
-from aiohttp import ClientSession
 from dotenv import load_dotenv
 from getpass import getpass
 from functools import lru_cache
@@ -71,12 +70,12 @@ def convert_db_results_to_pandas(results: List[SQLModel]) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-async def bound_fetch(
-    url: str,
-    fetch_method: Callable,
-    semaphore: asyncio.Semaphore,
-    session: ClientSession,
-    **kwargs,
-):
-    async with semaphore:
-        return await fetch_method(url, session, **kwargs)
+# async def bound_fetch(
+#     url: str,
+#     fetch_method: Callable,
+#     semaphore: asyncio.Semaphore,
+#     session: ClientSession,
+#     **kwargs,
+# ):
+#     async with semaphore:
+#         return await fetch_method(url, session, **kwargs)
