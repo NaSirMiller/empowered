@@ -2,7 +2,7 @@ from sqlmodel import SQLModel
 
 from empowered.models.sql.sql_client import SQLClient
 from empowered.models.sql.schemas import CensusAvailableYear
-from empowered.utils import get_sql_client
+from empowered.utils.helpers import get_sql_client
 
 
 class YearsAvailableRepository:

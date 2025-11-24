@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from getpass import getpass
-from logger_setup import set_logger, get_logger
+from empowered.utils.logger_setup import set_logger, get_logger
 from empowered.models.sql.sql_client import SQLClient
 from empowered.models.pydantic.census_payload import VariableCreate
 import os

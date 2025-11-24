@@ -1,9 +1,9 @@
 from sqlmodel import SQLModel
 
-from empowered.logger_setup import get_logger
+from empowered.utils.logger_setup import get_logger
 from empowered.models.sql.schemas import CensusDataset
 from empowered.models.sql.sql_client import SQLClient
-from empowered.utils import get_sql_client
+from empowered.utils.helpers import get_sql_client
 
 logger = get_logger("repo/dataset_repository")
 

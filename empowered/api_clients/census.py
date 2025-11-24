@@ -3,8 +3,8 @@ from functools import lru_cache
 import re
 import requests
 from typing import List, Dict, Optional
-from empowered.logger_setup import get_logger
-from empowered.utils import get_census_api_key
+from empowered.utils.logger_setup import get_logger
+from empowered.utils.helpers import get_census_api_key
 
 logger = get_logger(name=__name__)
 

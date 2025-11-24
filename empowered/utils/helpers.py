@@ -29,7 +29,7 @@ def get_sql_client() -> SQLClient:
 
 
 from empowered.models.sql.sql_client import SQLClient
-from empowered.utils import get_sql_client
+from empowered.utils.helpers import get_sql_client
 
 
 @lru_cache(maxsize=128)

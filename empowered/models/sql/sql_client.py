@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from typing import Any, Dict, List, Type, Optional
 from sqlmodel import SQLModel, Session, create_engine, select, text
-from logger_setup import get_logger
+from empowered.utils.logger_setup import get_logger
 
 logger = get_logger(__name__)
 

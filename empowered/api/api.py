@@ -13,7 +13,7 @@ from empowered.repositories.census.variables_repo import CensusVariableRepositor
 from empowered.repositories.census.estimates_repo import CensusEstimateRepository
 from empowered.repositories.census.geography_repo import GeographyRepository
 
-from empowered.services.census import (
+from empowered.api_clients.census import (
     get_places,
     get_counties,
     get_estimate,
@@ -25,7 +25,7 @@ from empowered.services.census import (
     validate_group_id,
 )
 
-from empowered.utils import get_sql_client
+from empowered.utils.helpers import get_sql_client
 
 
 app = FastAPI(title="Census API Server")
