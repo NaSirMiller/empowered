@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 
-from empowered.models.pydantic.census import (
+from empowered.models.pydantic.census_payload import (
     DatasetCreate,
     EstimateRequest,
 )
