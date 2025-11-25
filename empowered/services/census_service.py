@@ -47,7 +47,7 @@ def validate_group_id(acs_id: int, year: int, group_id: str) -> bool:
 
 def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
     """
-    Transform raw API variables into:
+    Transform raw API ariables into:
     [
         {"variable_id": "DP05_0001E", "description": "Total population"},
         ...
@@ -60,7 +60,7 @@ def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
         return [
             {"variable_id": v.get("id"), "description": v.get("label")}
             for v in raw_vars
-            if v.get("id", "").startswith(group_id)
+            if v.get("id", "").startswith(group_id) and v.get("id", "").endswith("E")
         ]
     except CensusAPIError as e:
         raise RuntimeError(f"Failed to fetch variables for group {group_id}: {e}")

@@ -252,13 +252,10 @@ def get_estimate(
         url = f"{base_url}&for=county:{county_fips}&key={api_key}"
     else:
         url = f"{base_url}&for=state:{state_fips}&key={api_key}"
-    # print(f"Final url={url}")
-    # return {"estimates": []}
     try:
         response = requests.get(url)
-        print(f"response={response}")
         response.raise_for_status()
-        rows = response.json()
+        rows = response.json()[1:]
         print(f"rows={rows}")
         estimates = [
             [{"variable": var, "estimate": row[i]} for i, var in enumerate(variables)]

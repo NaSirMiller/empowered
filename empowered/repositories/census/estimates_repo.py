@@ -3,7 +3,11 @@ from sqlmodel import SQLModel
 from empowered.models.sql.sql_client import SQLClient
 from empowered.models.sql.schemas import CensusEstimate
 from empowered.utils.helpers import get_sql_client
+from empowered.utils.logger_setup import get_logger
 from typing import List, Optional
+
+
+logger = get_logger(__name__)
 
 
 class CensusEstimateRepository:
@@ -45,19 +49,22 @@ class CensusEstimateRepository:
     ) -> None:
         instances = []
         for estimate in estimates:
-            instances.append(
-                CensusEstimate(
-                    id=None,
-                    place_fips=estimate["place_fips"],
-                    county_fips=estimate["county_fips"],
-                    state_fips=estimate["state_fips"],
-                    year_id=year_id,
-                    dataset_id=dataset_id,
-                    variable_id=estimate["variable"],
-                    group_id=estimate["variable"].split("_")[0],
-                    estimate=float(estimate["estimate"]),
-                    margin_of_error=estimate.get("margin_of_error"),
+            try:
+                instances.append(
+                    CensusEstimate(
+                        id=None,
+                        place_fips=estimate["place_fips"],
+                        county_fips=estimate["county_fips"],
+                        state_fips=estimate["state_fips"],
+                        year_id=year_id,
+                        dataset_id=dataset_id,
+                        variable_id=estimate["variable"],
+                        group_id=estimate["variable"].split("_")[0],
+                        estimate=float(estimate["estimate"]),
+                        margin_of_error=estimate.get("margin_of_error"),
+                    )
                 )
-            )
+            except:
+                logger.info(f"Errored estimate: {estimate}")
         if instances:
             self.db_client.insert(instances=instances)

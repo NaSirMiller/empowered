@@ -103,7 +103,9 @@ class CensusEstimate(SQLModel, table=True):
     __tablename__ = "CensusEstimate"
     place_fips: int
     state_fips: int
-    county_fips: int
+    county_fips: int | None = Field(
+        default=None,
+    )
     year_id: int
     dataset_id: str = Field(max_length=255)
     variable_id: str = Field(max_length=255)
@@ -115,7 +117,6 @@ class CensusEstimate(SQLModel, table=True):
         PrimaryKeyConstraint(
             "place_fips",
             "state_fips",
-            "county_fips",
             "dataset_id",
             "year_id",
             "variable_id",
@@ -132,15 +133,6 @@ class CensusEstimate(SQLModel, table=True):
         ForeignKeyConstraint(
             ["state_fips", "dataset_id", "year_id"],
             ["CensusState.state_fips", "CensusState.dataset_id", "CensusState.year_id"],
-        ),
-        ForeignKeyConstraint(
-            ["county_fips", "state_fips", "dataset_id", "year_id"],
-            [
-                "CensusCounty.county_fips",
-                "CensusCounty.state_fips",
-                "CensusCounty.dataset_id",
-                "CensusCounty.year_id",
-            ],
         ),
         ForeignKeyConstraint(
             ["year_id"],
