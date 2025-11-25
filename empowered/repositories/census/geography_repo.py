@@ -23,7 +23,7 @@ class GeographyRepository:
         }
         if state_name is not None:
             parameters["state_name"] = state_name
-        return self.db_client.select(model=CensusState, params=parameters)
+        return self.db_client.select(model=CensusState, filters=parameters)
 
     def get_counties(
         self,
@@ -39,7 +39,7 @@ class GeographyRepository:
         }
         if county_name is not None:
             parameters["county_name"] = county_name
-        return self.db_client.select(model=CensusCounty, params=parameters)
+        return self.db_client.select(model=CensusCounty, filters=parameters)
 
     def get_places(
         self,
@@ -58,7 +58,7 @@ class GeographyRepository:
             parameters["place_fips"] = place_fips_code
         if place_name is not None:
             parameters["place_name"] = place_name
-        return self.db_client.select(model=CensusPlace, params=parameters)
+        return self.db_client.select(model=CensusPlace, filters=parameters)
 
     def insert_states(
         self,
@@ -91,6 +91,7 @@ class GeographyRepository:
                 county_name=c["county_name"],
                 dataset_id=dataset_id,
                 year_id=year_id,
+                state_fips=c["state_fips"],
             )
             for c in counties
         ]

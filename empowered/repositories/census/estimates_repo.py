@@ -37,9 +37,6 @@ class CensusEstimateRepository:
 
     def insert_estimates(
         self,
-        place_fips: int,
-        county_fips: Optional[int],
-        state_fips: int,
         year_id: int,
         dataset_id: int,
         estimates: List[
@@ -51,14 +48,14 @@ class CensusEstimateRepository:
             instances.append(
                 CensusEstimate(
                     id=None,
-                    place_fips=place_fips,
-                    county_fips=county_fips,
-                    state_fips=state_fips,
+                    place_fips=estimate["place_fips"],
+                    county_fips=estimate["county_fips"],
+                    state_fips=estimate["state_fips"],
                     year_id=year_id,
                     dataset_id=dataset_id,
                     variable_id=estimate["variable"],
                     group_id=estimate["variable"].split("_")[0],
-                    estimate=float(estimate["value"]),
+                    estimate=float(estimate["estimate"]),
                     margin_of_error=estimate.get("margin_of_error"),
                 )
             )

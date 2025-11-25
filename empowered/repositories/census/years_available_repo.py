@@ -13,7 +13,7 @@ class YearsAvailableRepository:
         params = {"dataset_id": dataset_id}
         if year is not None:
             params["year"] = year
-        return self.db_client.select(model=CensusAvailableYear, params=params)
+        return self.db_client.select(model=CensusAvailableYear, filters=params)
 
     def insert_year(self, dataset_id: int, year: int) -> None:
         self.db_client.insert(

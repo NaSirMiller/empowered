@@ -58,8 +58,9 @@ def get_variables(acs_id: int, year: int, group_id: str) -> List[Dict]:
     try:
         raw_vars = api_get_variables(acs_id, year, group_id)
         return [
-            {"variable_id": v.get("id"), "description": v.get("purpose")}
+            {"variable_id": v.get("id"), "description": v.get("label")}
             for v in raw_vars
+            if v.get("id", "").startswith(group_id)
         ]
     except CensusAPIError as e:
         raise RuntimeError(f"Failed to fetch variables for group {group_id}: {e}")
@@ -139,6 +140,9 @@ def get_estimates(
                 if var not in estimates_dict:
                     estimates_dict[var] = []
                 estimates_dict[var].append(entry)
-        return estimates_dict
+        flat_list = []
+        for entries in estimates_dict.values():
+            flat_list.extend(entries)
+        return {"estimates": flat_list}
     except CensusAPIError as e:
         raise RuntimeError(f"Failed to fetch estimates for ACS{acs_id} {year}: {e}")

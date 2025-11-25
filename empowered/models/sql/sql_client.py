@@ -2,8 +2,32 @@ from contextlib import contextmanager
 from typing import Any, Dict, List, Type, Optional
 from sqlmodel import SQLModel, Session, create_engine, select, text
 from empowered.utils.logger_setup import get_logger
+from empowered.models.sql import (
+    CensusDataset,
+    CensusAvailableYear,
+    CensusGroup,
+    CensusVariable,
+    CensusState,
+    CensusCounty,
+    CensusPlace,
+    CensusEstimate,
+    CensusMock,
+)
 
 logger = get_logger(__name__)
+
+
+def _create(engine) -> None:
+    SQLModel.metadata.create_all(engine)
+    # SQLModel.metadata.create_all(engine, tables=[CensusMock.__table__])
+    # SQLModel.metadata.create_all(engine, tables=[CensusDataset.__table__])
+    # SQLModel.metadata.create_all(engine, tables=[CensusAvailableYear.__table__])
+    # SQLModel.metadata.create_all(engine, tables=[CensusGroup.__table__])
+    # SQLModel.metadata.create_all(engine, tables=[CensusVariable.__table__])
+    # SQLModel.metadata.create_all(engine, tables=[CensusState.__table__])
+    # SQLModel.metadata.create_all(engine, tables=[CensusCounty.__table__])
+    # SQLModel.metadata.create_all(engine, tables=[CensusPlace.__table__])
+    # SQLModel.metadata.create_all(engine, tables=[CensusEstimate.__table__])
 
 
 class SQLClient:
@@ -30,7 +54,7 @@ class SQLClient:
             logger.info(f"Engine created.")
             logger.info("Connecting to SQL server...")
             logger.info("Creating tables defined in project...")
-            SQLModel.metadata.create_all(self.engine)
+            _create(engine=self.engine)
             logger.info("Tables created successfully.")
             logger.info("Connection successful.")
         except Exception as e:
@@ -66,17 +90,12 @@ class SQLClient:
                 raise
 
     # Insert one or many SQLModel instances
-    def insert(self, instances: List[SQLModel]) -> None:
-        if not instances:
-            return
+    def insert(self, instances):
         with self.session_scope() as session:
-            try:
-                session.add_all(instances)
-                for instance in instances:
-                    session.refresh(instance)
-            except Exception as e:
-                logger.exception("Error inserting data")
-                raise
+            session.add_all(instances)
+            session.commit()
+            for instance in instances:
+                session.refresh(instance)
 
     # Update objects using SQLModel (pass a dictionary of changes)
     def update(
@@ -102,7 +121,7 @@ class SQLClient:
         filters: Optional[Dict[str, Any]] = None,
         group_by: Optional[List[Any]] = None,
         order_by: Optional[List[Any]] = None,
-    ) -> List[SQLModel]:
+    ) -> List[dict]:
         """Return a list of SQLModel objects matching the query."""
         with self.session_scope() as session:
             stmt = select(model)
@@ -115,4 +134,4 @@ class SQLClient:
                 stmt = stmt.order_by(*order_by)
 
             result = session.exec(stmt).all()
-            return result
+            return [res.model_dump() for res in result]

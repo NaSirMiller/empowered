@@ -15,13 +15,10 @@ class DatasetRepository:
     def get_by_code(self, code: str) -> list[SQLModel]:
         return self.db_client.select(model=CensusDataset, params={"code": code})
 
-    def insert_code(self, code: str, frequency: str) -> None:
-        valid_frequencies = {"annual", "quinquennial"}  # every 5 years = quinquennial
-        if frequency.lower() not in valid_frequencies:
-            raise ValueError(
-                f"Invalid frequency '{frequency}'. Must be one of: {', '.join(valid_frequencies)}"
-            )
+    def insert_code(self, code: str, frequency: int) -> None:
         self.db_client.insert(
-            instances=[CensusDataset(id=None, code=code, frequency=frequency)]
+            instances=[
+                CensusDataset(id=f"{code}{frequency}", code=code, frequency=frequency)
+            ]
         )
         logger.info("Successfully inserted new Census code to database")

@@ -15,7 +15,7 @@ class GroupsRepository:
         parameters = {"dataset_id": dataset_id, "year_id": year_id}
         if group_id is not None:
             parameters["id"] = group_id
-        return self.db_client.select(model=CensusGroup, params=parameters)
+        return self.db_client.select(model=CensusGroup, filters=parameters)
 
     def insert_groups(
         self,

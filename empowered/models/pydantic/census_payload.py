@@ -86,9 +86,9 @@ class EstimateRequest(BaseModel):
         return v
 
     @field_validator("county")
-    def validate_place_requires_state(cls, v, values):
+    def validate_county_requires_state(cls, v, values):
         if v is not None and values.get("state") is None:
-            raise ValueError("Place FIPS requires a state FIPS.")
+            raise ValueError("County FIPS requires a state FIPS.")
         return v
 
     @field_validator("*")

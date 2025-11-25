@@ -23,14 +23,13 @@ class VariablesRepository:
         }
         if variable_id is not None:
             parameters["id"] = variable_id
-        return self.db_client.select(model=CensusVariable, params=parameters)
+        return self.db_client.select(model=CensusVariable, filters=parameters)
 
     def insert_variables(
         self,
         variables: list[dict],
         dataset_id: int,
         year_id: int,
-        group_id: str,
     ) -> None:
         """
         Insert multiple CensusVariable rows in batch.
@@ -47,7 +46,7 @@ class VariablesRepository:
                 dataset_id=dataset_id,
                 description=v["description"],
                 year_id=year_id,
-                group_id=group_id,
+                group_id=v["group_id"],
             )
             for v in variables
         ]

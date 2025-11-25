@@ -18,6 +18,14 @@ class CensusAPIError(Exception):
         self.status_code = status_code
 
 
+def convert_single_digit_fips(fips: int) -> str:
+    if len(str(fips)) == 1:
+        updated_fips = f"0{fips}"
+        # print(f"fips={fips} to {updated_fips}")
+        return updated_fips
+    return fips
+
+
 # ------------------ HTML Parsing ------------------
 def get_html(url: str) -> str:
     response = requests.get(url)
@@ -147,6 +155,7 @@ def get_counties(
     county_name: Optional[str] = None,
     api_key: str = get_census_api_key(),
 ):
+    fips_code = convert_single_digit_fips(fips=fips_code)
     url = (
         f"https://api.census.gov/data/{year}/acs/acs{acs_id}"
         f"?get=NAME&for=county:*&in=state:{fips_code}&key={api_key}"
@@ -187,6 +196,7 @@ def get_places(
     place_name: Optional[str] = None,
     api_key: str = get_census_api_key(),
 ):
+    state_fips_code = convert_single_digit_fips(fips=state_fips_code)
     url = (
         f"https://api.census.gov/data/{year}/acs/acs{acs_id}"
         f"?get=NAME&for=place:*&in=state:{state_fips_code}&key={api_key}"
@@ -229,21 +239,27 @@ def get_estimate(
         raise CensusAPIError(
             "One of state_fips, place_fips, or county_fips must be provided."
         )
+    state_fips = convert_single_digit_fips(fips=state_fips)
+    county_fips = convert_single_digit_fips(fips=county_fips)
+    place_fips = convert_single_digit_fips(fips=place_fips)
 
     variables_stringified = ",".join(variables)
     base_url = f"https://api.census.gov/data/{year}/acs/acs{acs_id}?get={variables_stringified}"
 
     if place_fips is not None:
         url = f"{base_url}&for=place:{place_fips}&in=state:{state_fips}&key={api_key}"
-    elif state_fips is not None:
-        url = f"{base_url}&for=state:{state_fips}&key={api_key}"
-    else:
+    elif county_fips is not None:
         url = f"{base_url}&for=county:{county_fips}&key={api_key}"
-
+    else:
+        url = f"{base_url}&for=state:{state_fips}&key={api_key}"
+    # print(f"Final url={url}")
+    # return {"estimates": []}
     try:
         response = requests.get(url)
+        print(f"response={response}")
         response.raise_for_status()
-        rows = response.json()[1:]
+        rows = response.json()
+        print(f"rows={rows}")
         estimates = [
             [{"variable": var, "estimate": row[i]} for i, var in enumerate(variables)]
             for row in rows
