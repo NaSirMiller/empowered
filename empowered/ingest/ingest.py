@@ -1,11 +1,24 @@
+import asyncio
+import aiohttp
+from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
-from getpass import getpass
+from typing import Callable, Dict, List
+
 from empowered.utils.logger_setup import set_logger, get_logger
-from empowered.models.sql.sql_client import SQLClient
-from empowered.models.pydantic.census_payload import VariableCreate
-import os
-import requests
-import fire
+from empowered.repositories.census.datasets_repo import DatasetRepository
+from empowered.repositories.census.estimates_repo import CensusEstimateRepository
+from empowered.repositories.census.geography_repo import GeographyRepository
+from empowered.repositories.census.groups_repo import GroupsRepository
+from empowered.repositories.census.variables_repo import VariablesRepository
+from empowered.repositories.census.years_available_repo import YearsAvailableRepository
+from empowered.services.census_service import (
+    get_counties,
+    get_estimates,
+    get_groups,
+    get_places,
+    get_states,
+    get_variables,
+)
 
 ACS_VARIABLES = [
     # Population & Households
@@ -128,25 +141,139 @@ ACS_VARIABLES = [
     "B17001_027E",
     "B17001_028E",
 ]  # Up to 50 at once
+ACS_GROUPS = list(set([var.split("_")[0] for var in ACS_VARIABLES]))
 
 BASE_URL = "http://localhost:8000/census/"
 
 ACS_DATASETS = [
-    {"code": "acs", "frequency": 1, "id": "acs1"},
+    # {"code": "acs", "frequency": 1, "id": "acs1"},
     {"code": "acs", "frequency": 5, "id": "acs5"},
 ]
+YEARS = [2019, 2024]
+DEFAULT_EXECUTOR = ThreadPoolExecutor(max_workers=10)
+VARIABLE_EXECUTOR = ThreadPoolExecutor(max_workers=50)
+
+
+set_logger()
+load_dotenv()
+logger = get_logger()
+logger.info("Completed logging setup.")
 
 
 class IngestError(Exception):
     pass
 
 
-def main():
-    set_logger()
-    load_dotenv()
-    logger = get_logger()
-    logger.info("Completed logging setup.")
+async def main():
+    pass
+
+
+async def arun(
+    func: Callable,
+    executor: ThreadPoolExecutor,
+    *args,
+    **kwargs,
+):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(executor, lambda: func(*args, **kwargs))
+
+
+async def load_geography(dataset, year) -> List[Dict]:
+    acs_id = dataset["frequency"]
+    states_response = await arun(
+        func=get_states,
+        executor=DEFAULT_EXECUTOR,
+        acs_id=acs_id,
+        year=year,
+    )
+    assert isinstance(states_response, dict)
+    states = states_response["states"]
+
+    async def fetch_state_geo(state: dict) -> dict:
+        state_fips = state["state_fips"]
+        state_name = state["state_name"]
+
+        # Run counties and places concurrently for this state
+        acounties_task = arun(
+            func=get_counties,
+            executor=DEFAULT_EXECUTOR,
+            acs_id=acs_id,
+            year=year,
+            state_fips=state_fips,
+        )
+        aplaces_task = arun(
+            func=get_places,
+            executor=DEFAULT_EXECUTOR,
+            acs_id=acs_id,
+            year=year,
+            state_fips=state_fips,
+        )
+
+        acounties, aplaces = await asyncio.gather(acounties_task, aplaces_task)
+
+        return {
+            "state_fips": state_fips,
+            "state_name": state_name,
+            "counties": acounties,
+            "places": aplaces,
+        }
+
+    # Run all states concurrently
+    geography = await asyncio.gather(*(fetch_state_geo(state) for state in states))
+
+    return geography
+
+
+async def ingest_geography(
+    dataset, year, geo_repo: GeographyRepository, year_repo: YearsAvailableRepository
+) -> None:
+    geography = await ingest_geography(dataset=dataset, year=year)
+    dataset_id = dataset["id"]
+    year_id = year_repo.get_years(dataset_id=dataset_id, year=year)
+
+    states = [
+        {"state_fips": state["state_fips"], "state_name": state["state_name"]}
+        for state in geography
+    ]
+    logger.info("Inserting states into database..")
+    geo_repo.insert_states(states=states, dataset_id=dataset_id, year_id=year_id)
+
+    atasks = []
+    logger.info("Creating place and county routines...")
+    for state in geography:
+        counties = state["counties"]
+        places = state["places"]
+        atasks.append(
+            arun(
+                func=geo_repo.insert_counties,
+                executor=DEFAULT_EXECUTOR,
+                counties=counties,
+                dataset_id=dataset_id,
+                year_id=year_id,
+            )
+        )
+        atasks.append(
+            arun(
+                func=geo_repo.insert_places,
+                executor=DEFAULT_EXECUTOR,
+                places=places,
+                dataset_id=dataset_id,
+                year_id=year_id,
+            )
+        )
+
+    logger.info("Inserting places and counties into database...")
+    await asyncio.gather(*atasks)
+
+    logger.info("Geography data ingested.")
+
+
+async def ingest(dataset, year) -> None:
+    acs_id = dataset["frequency"]
+    agroups = await arun(
+        func=get_groups, executor=DEFAULT_EXECUTOR, acs_id=acs_id, year=year
+    )
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
