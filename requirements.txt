@@ -8,5 +8,6 @@ pydantic
 pyodbc
 requests
 scikit-learn
+seaborn
 sqlmodel
 uvicorn
