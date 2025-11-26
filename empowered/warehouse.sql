@@ -346,3 +346,34 @@ JOIN dimCensusVariable dv ON f.variable_id = dv.variable_id AND f.dataset_id = d
 JOIN dimCensusState ds2 ON f.state_fips = ds2.state_fips AND f.dataset_id = ds2.dataset_id AND f.year_id = ds2.year_id
 LEFT JOIN dimCensusCounty dc ON f.county_fips = dc.county_fips AND f.state_fips = dc.state_fips AND f.dataset_id = dc.dataset_id AND f.year_id = dc.year_id
 LEFT JOIN dimCensusPlace dp ON f.place_fips = dp.place_fips AND f.state_fips = dp.state_fips AND f.dataset_id = dp.dataset_id AND f.year_id = dp.year_id;
+
+-------------------
+-- Pivot table 
+-------------------
+
+DECLARE @cols NVARCHAR(MAX);
+
+SELECT @cols = STRING_AGG(QUOTENAME(variable_id), ',') -- create variable list
+FROM (SELECT DISTINCT variable_id FROM fullCensusEstimate) v;
+
+DECLARE @sqlStatement NVARCHAR(MAX);
+
+SET @sqlStatement = '
+SELECT *
+INTO CensusPivot
+FROM (
+    SELECT place_fips, state_fips, variable_id, estimate
+    FROM fullCensusEstimate
+) src
+PIVOT (
+    MAX(estimate) 
+    FOR variable_id IN (' + @cols + ')
+) p;
+';
+
+EXEC sp_executesql @sqlStatement;
+
+SELECT *
+FROM CensusPivot;
+
+-- DROP TABLE CensusPivot;
