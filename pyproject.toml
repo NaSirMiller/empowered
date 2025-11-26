@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "empowered"
-version = "0.1.3"
+version = "0.1.4"
 description = "EmpowerEd project utilities and API"
 authors = [
     { name="Na'Sir Miller" }
