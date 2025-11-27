@@ -2,11 +2,12 @@ aiohttp
 beautifulsoup4
 python-dotenv
 fastapi
-fire
 pandas
+plotly
 pydantic
 pyodbc
 requests
+nbformat
 scikit-learn
 seaborn
 sqlmodel
